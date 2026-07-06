@@ -77,6 +77,8 @@ open "dist/Studio Data Saver.app"
 
 This creates a zip file in `dist/` that can be attached to a GitHub Release.
 
+Owner publishing steps are in [docs/PUBLISHING.md](docs/PUBLISHING.md).
+
 ## How It Works
 
 1. Choose a source folder.
