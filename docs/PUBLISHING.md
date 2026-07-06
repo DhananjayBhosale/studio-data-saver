@@ -51,7 +51,7 @@ Build the release zip:
 Create the first release:
 
 ```sh
-gh release create v$(cat VERSION) "dist/Studio Data Saver-$(cat VERSION).zip" "dist/Studio Data Saver-$(cat VERSION).zip.sha256" --title "Studio Data Saver $(cat VERSION)" --notes-file docs/RELEASE.md
+gh release create v$(cat VERSION) "dist/Studio Data Saver-$(cat VERSION).dmg" "dist/Studio Data Saver-$(cat VERSION).dmg.sha256" "dist/Studio Data Saver-$(cat VERSION).zip" "dist/Studio Data Saver-$(cat VERSION).zip.sha256" --title "Studio Data Saver $(cat VERSION)" --notes-file docs/RELEASE.md
 ```
 
 ## Credits

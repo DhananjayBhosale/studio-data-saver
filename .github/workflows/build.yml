@@ -22,3 +22,5 @@ jobs:
           path: |
             dist/Studio Data Saver-*.zip
             dist/Studio Data Saver-*.zip.sha256
+            dist/Studio Data Saver-*.dmg
+            dist/Studio Data Saver-*.dmg.sha256

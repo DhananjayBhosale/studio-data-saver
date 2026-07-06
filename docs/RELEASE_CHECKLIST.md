@@ -7,12 +7,14 @@
    ./scripts/package_release.sh
    ```
 
-3. Test the zip from `dist/` on a clean Mac.
+3. Test the DMG and zip from `dist/` on a clean Mac.
 4. Create or update the GitHub Release.
 5. Attach:
 
    - `dist/Studio Data Saver-<version>.zip`
    - `dist/Studio Data Saver-<version>.zip.sha256`
+   - `dist/Studio Data Saver-<version>.dmg`
+   - `dist/Studio Data Saver-<version>.dmg.sha256`
 
 6. Mention that users must install:
 

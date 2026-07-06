@@ -16,9 +16,9 @@ HandBrakeCLI is not bundled with this app. Users install it separately.
 
 For most people:
 
-1. Download `Studio Data Saver.zip` from the latest GitHub Release.
-2. Unzip it.
-3. Move `Studio Data Saver.app` to `/Applications`.
+1. Download `Studio Data Saver.dmg` from the latest GitHub Release.
+2. Open the DMG.
+3. Drag `Studio Data Saver.app` to Applications.
 4. Install the video tools:
 
 ```sh
@@ -45,9 +45,9 @@ brew install handbrake ffmpeg
 
 ## Download the App
 
-Download the latest `Studio Data Saver.zip` from GitHub Releases.
+Download the latest `Studio Data Saver.dmg` from GitHub Releases.
 
-Unzip it, move `Studio Data Saver.app` to `/Applications`, then open it. If macOS blocks the first launch because the app is not notarized yet, right-click the app and choose **Open**.
+Open it, drag `Studio Data Saver.app` to Applications, then open the app. If macOS blocks the first launch because the app is not notarized yet, right-click the app and choose **Open**.
 
 ## Requirements
 
@@ -79,7 +79,7 @@ open "dist/Studio Data Saver.app"
 ./scripts/package_release.sh
 ```
 
-This creates a zip file in `dist/` that can be attached to a GitHub Release.
+This creates a zip file and DMG in `dist/` that can be attached to a GitHub Release.
 
 Owner publishing steps are in [docs/PUBLISHING.md](docs/PUBLISHING.md).
 

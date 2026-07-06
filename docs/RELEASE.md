@@ -24,7 +24,7 @@ brew install handbrake ffmpeg
 
 HandBrakeCLI and FFmpeg are not bundled in the app. They are installed separately so their own licenses stay clear.
 
-If macOS blocks the first launch because the app is not notarized yet, right-click `Studio Data Saver.app` and choose **Open**.
+Download the DMG, open it, then drag `Studio Data Saver.app` to Applications. If macOS blocks the first launch because the app is not notarized yet, right-click `Studio Data Saver.app` and choose **Open**.
 
 ## Credits
 
