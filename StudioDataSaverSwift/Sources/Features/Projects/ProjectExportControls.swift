@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct ProjectExportControls: View {
     @Environment(StudioStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
