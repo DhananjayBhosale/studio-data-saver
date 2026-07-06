@@ -10,6 +10,21 @@ Windows PC or network drive -> iMac work folder -> Studio NAS
 
 The app copies normal project files directly to the destination, stages only the active video jobs on the iMac, encodes those videos with HandBrakeCLI, moves the finished outputs to the destination, and remembers progress so interrupted work can continue.
 
+## Quick Start
+
+For most people:
+
+1. Download `Studio Data Saver.zip` from the latest GitHub Release.
+2. Unzip it.
+3. Move `Studio Data Saver.app` to `/Applications`.
+4. Install the video tools:
+
+```sh
+brew install handbrake ffmpeg
+```
+
+5. Open the app, choose your source, destination, and iMac work folder, then press **Start**.
+
 ## Features
 
 - Native SwiftUI macOS app
@@ -24,7 +39,7 @@ The app copies normal project files directly to the destination, stages only the
 - Optional cleanup controls for source files and iMac temp copies
 - Codex-friendly app data in `~/Library/Application Support/Studio Data Saver/`
 
-## Download
+## Download the App
 
 Download the latest `Studio Data Saver.zip` from GitHub Releases.
 
@@ -45,9 +60,11 @@ brew install handbrake ffmpeg
 
 Studio Data Saver does not bundle HandBrakeCLI or FFmpeg. They stay separate system tools.
 
-## Build
+## Build From Source
 
 ```sh
+git clone https://github.com/DhananjayBhosale/studio-data-saver.git
+cd studio-data-saver
 ./scripts/build_app.sh
 open "dist/Studio Data Saver.app"
 ```
@@ -86,4 +103,4 @@ Studio Data Saver source code is released under the MIT License. See [LICENSE](L
 
 Third-party tools and credits are listed in [NOTICE.md](NOTICE.md).
 
-This project is not affiliated with HandBrake, FFmpeg, Apple, GitHub, or OpenAI.
+Thanks to the teams and communities behind Swift, SwiftUI, HandBrake, FFmpeg, Homebrew, GitHub Actions, and OpenAI Codex. This project is not affiliated with HandBrake, FFmpeg, Apple, GitHub, or OpenAI.
