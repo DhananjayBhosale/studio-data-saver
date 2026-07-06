@@ -1,14 +1,16 @@
 # Studio Data Saver
 
-Studio Data Saver is a native macOS app for archiving large studio folders without first copying the whole source folder onto the iMac.
+Studio Data Saver is a native macOS app that helps you shrink large video folders and copy the complete folder safely to another drive, backup disk, or NAS.
 
-It is designed for workflows like:
+It keeps normal files like project files, photos, audio, documents, captions, and thumbnails as they are. Videos are compressed with `HandBrakeCLI`, the command-line tool from the open-source HandBrake project. Studio Data Saver adds a simple queue, a temporary work folder, resume tracking, and plain-language logs around that video engine.
 
-```text
-Windows PC or network drive -> iMac work folder -> Studio NAS
-```
+## Powered by HandBrakeCLI
 
-The app copies normal project files directly to the destination, stages only the active video jobs on the iMac, encodes those videos with HandBrakeCLI, moves the finished outputs to the destination, and remembers progress so interrupted work can continue.
+Video compression in Studio Data Saver is done by `HandBrakeCLI` from [HandBrake](https://handbrake.fr/).
+
+Studio Data Saver is not a video encoder by itself. It is a folder-saving workflow app that uses HandBrakeCLI for the actual video conversion, then handles folder copying, queueing, progress tracking, resume records, and cleanup choices around it.
+
+HandBrakeCLI is not bundled with this app. Users install it separately.
 
 ## Quick Start
 
@@ -23,20 +25,22 @@ For most people:
 brew install handbrake ffmpeg
 ```
 
-5. Open the app, choose your source, destination, and iMac work folder, then press **Start**.
+5. Open the app, choose the folder you want to save, where to save it, and a temporary Mac work folder, then press **Start**.
 
 ## Features
 
 - Native SwiftUI macOS app
 - Apple Silicon build
+- Video compression powered by HandBrakeCLI
+- Copy all non-video files without changing them
 - Project queue
 - Resume after app stop or Mac restart
 - Skip files that are already saved in the destination
 - Copy non-video files while videos encode
-- Stage only active videos on the iMac
+- Stage only active videos on the Mac
 - Plain-language run log
 - Export controls for compression, resolution, and frame rate
-- Optional cleanup controls for source files and iMac temp copies
+- Optional cleanup controls for source files and Mac temp copies
 - Codex-friendly app data in `~/Library/Application Support/Studio Data Saver/`
 
 ## Download the App
@@ -49,7 +53,7 @@ Unzip it, move `Studio Data Saver.app` to `/Applications`, then open it. If macO
 
 - macOS 14 or newer
 - Apple Silicon Mac
-- HandBrakeCLI
+- HandBrakeCLI from HandBrake
 - ffprobe from FFmpeg
 
 Install video tools with Homebrew:
@@ -83,11 +87,11 @@ Owner publishing steps are in [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 1. Choose a source folder.
 2. Choose a destination folder.
-3. Choose an iMac work folder.
+3. Choose a temporary Mac work folder.
 4. Pick how many videos should encode at the same time.
 5. Press **Start**.
 
-For network sources, the app copies only the active video jobs to the iMac work folder. It does not copy a full 1 TB source folder locally before starting.
+If the source folder is huge, the app does not copy the whole folder to the Mac before starting. It stages only the active video jobs, compresses them with HandBrakeCLI, saves the finished files to the destination, and keeps moving through the queue.
 
 ## Data and Resume
 

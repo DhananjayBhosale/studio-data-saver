@@ -13,7 +13,7 @@ studio-data-saver
 Description:
 
 ```text
-Native macOS app for archiving large studio folders: copy files, encode videos, save NAS space, and resume safely after interruptions.
+A macOS app that uses HandBrakeCLI to shrink large video folders, copy everything safely to another drive or NAS, and resume if the work stops.
 ```
 
 Topics:
@@ -29,7 +29,7 @@ From the project folder:
 ```sh
 brew install gh
 gh auth login
-gh repo create DhananjayBhosale/studio-data-saver --public --description "Native macOS app for archiving large studio folders: copy files, encode videos, save NAS space, and resume safely after interruptions." --source . --remote origin --push
+gh repo create DhananjayBhosale/studio-data-saver --public --description "A macOS app that uses HandBrakeCLI to shrink large video folders, copy everything safely to another drive or NAS, and resume if the work stops." --source . --remote origin --push
 gh repo edit DhananjayBhosale/studio-data-saver --add-topic macos --add-topic swift --add-topic swiftui --add-topic handbrake --add-topic ffmpeg --add-topic video-compression --add-topic nas --add-topic archive --add-topic apple-silicon
 ```
 
@@ -66,3 +66,5 @@ Studio Data Saver is MIT licensed. The app uses external command-line tools that
 - OpenAI Codex assistance during development
 
 See `NOTICE.md` for details and affiliation notes.
+
+Use `docs/RELEASE_CHECKLIST.md` for the maintainer checklist.

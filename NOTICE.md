@@ -8,13 +8,15 @@ This file lists important external tools, platforms, and design credits. It is n
 
 ### HandBrakeCLI
 
-Studio Data Saver calls `HandBrakeCLI` as an external command-line tool for video encoding.
+Studio Data Saver uses `HandBrakeCLI` as its video compression engine.
+
+The actual video encoding, transcoding, codec handling, and quality behavior come from HandBrakeCLI, which is part of the HandBrake project. Studio Data Saver provides the macOS app interface, project queue, folder copying, resume records, progress log, and cleanup workflow around HandBrakeCLI.
 
 - Project: https://handbrake.fr/
 - Source: https://github.com/HandBrake/HandBrake
 - License: GNU General Public License Version 2 (GPLv2)
 
-HandBrakeCLI is not bundled in this repository or inside the app bundle. Users install it separately, for example with Homebrew.
+HandBrakeCLI is not bundled in this repository or inside the app bundle. Users install it separately, for example with Homebrew. If a downstream distributor chooses to bundle HandBrakeCLI, they are responsible for following HandBrake's license terms.
 
 ### FFmpeg / ffprobe
 

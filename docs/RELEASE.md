@@ -1,31 +1,38 @@
-# Release Checklist
+# Studio Data Saver 0.3.10
 
-1. Update `VERSION`.
-2. Run:
+Studio Data Saver is a native macOS app that helps you shrink large video folders and copy the complete folder safely to another drive, backup disk, or NAS.
 
-   ```sh
-   ./scripts/package_release.sh
-   ```
+Video compression is powered by `HandBrakeCLI` from the open-source HandBrake project. Studio Data Saver adds the app workflow around it: queueing, copying, temporary work files, resume records, progress logs, and cleanup choices.
 
-3. Test the zip from `dist/` on a clean Mac.
-4. Create a GitHub Release.
-5. Attach:
+## What It Does
 
-   - `dist/Studio Data Saver-<version>.zip`
-   - `dist/Studio Data Saver-<version>.zip.sha256`
+- Compresses videos using HandBrakeCLI from HandBrake
+- Copies normal files like project files, photos, audio, documents, captions, and thumbnails without changing them
+- Uses a temporary Mac work folder only for the active video jobs
+- Avoids copying a huge source folder to the Mac all at once
+- Can resume after the app stops or the Mac restarts
+- Skips files that are already saved in the destination
+- Shows a simple log with copying, encoding, moving, and saved-space progress
 
-6. Mention that users must install:
+## Before Opening
 
-   ```sh
-   brew install handbrake ffmpeg
-   ```
-
-## Signing
-
-By default the build script uses ad-hoc signing:
+Install the video tools first:
 
 ```sh
-CODESIGN_IDENTITY=-
+brew install handbrake ffmpeg
 ```
 
-For wider distribution, use a Developer ID certificate and notarization.
+HandBrakeCLI and FFmpeg are not bundled in the app. They are installed separately so their own licenses stay clear.
+
+If macOS blocks the first launch because the app is not notarized yet, right-click `Studio Data Saver.app` and choose **Open**.
+
+## Credits
+
+The video compression engine is HandBrakeCLI from HandBrake:
+
+- https://handbrake.fr/
+- https://github.com/HandBrake/HandBrake
+
+Studio Data Saver also uses `ffprobe` from FFmpeg for video checks.
+
+This project is not affiliated with HandBrake, FFmpeg, Apple, GitHub, or OpenAI.
