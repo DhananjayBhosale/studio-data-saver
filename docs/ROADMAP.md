@@ -4,7 +4,7 @@
 
 Studio Data Saver should feel like a local, inspectable workspace app:
 projects on the left, one focused run in the center, and logs/state that can be
-opened by Codex when something needs debugging.
+opened by an AI assistant when something needs debugging.
 
 The app should stay practical and dense. No marketing screen, no decorative
 dashboard. First screen should be the working console.
@@ -19,7 +19,7 @@ dashboard. First screen should be the working console.
   and verification status.
 - Logs: human-readable live log plus structured JSONL events.
 
-## Codex-Friendly Data
+## AI-Friendly Data
 
 Store app data under:
 
@@ -42,7 +42,7 @@ Studio Data Saver/
           report.txt
 ```
 
-Each run should be debuggable by Codex without opening the GUI:
+Each run should be debuggable by an AI assistant without opening the GUI:
 
 - `project.json`: source/destination/work paths and user settings.
 - `run.json`: status, timestamps, selected mode, parallel jobs.

@@ -41,7 +41,7 @@ brew install handbrake ffmpeg
 - Plain-language run log
 - Export controls for compression, resolution, and frame rate
 - Optional cleanup controls for source files and Mac temp copies
-- Codex-friendly app data in `~/Library/Application Support/Studio Data Saver/`
+- AI-friendly app data in `~/Library/Application Support/Studio Data Saver/`
 
 ## Download the App
 
