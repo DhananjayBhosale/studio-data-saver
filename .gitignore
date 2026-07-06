@@ -1,0 +1,36 @@
+.DS_Store
+
+# Local app builds and release artifacts
+*.app/
+dist/
+*.zip
+*.dmg
+*.pkg
+
+# Swift build output
+StudioDataSaverSwift/Build/
+.build/
+DerivedData/
+ModuleCache/
+
+# Local app state and logs
+archive_compress_log.csv
+gui_settings.json
+*.log
+*.jsonl
+
+# Python cache from the old prototype
+__pycache__/
+*.pyc
+
+# Legacy prototype files not needed for the native Swift app
+archive_compress.py
+gui.pyw
+requirements.txt
+run_mac.command
+run_windows.bat
+hb_logo.ico
+hb_logo_header.png
+StudioDataSaverSips.iconset/
+Studio Data Saver Native.app/
+Studio Data Saver Python Wrapper.app/

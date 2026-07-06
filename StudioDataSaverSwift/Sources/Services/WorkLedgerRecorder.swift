@@ -1,0 +1,84 @@
+import Foundation
+
+actor WorkLedgerRecorder {
+    private let url: URL
+    private var ledger: WorkLedger
+
+    init(url: URL, projectID: UUID, runID: UUID, sourceRoot: URL, destinationRoot: URL) throws {
+        self.url = url
+        if let data = try? Data(contentsOf: url),
+           var existing = try? JSONCoding.decoder.decode(WorkLedger.self, from: data) {
+            existing.runID = runID
+            existing.sourceRoot = sourceRoot.path
+            existing.destinationRoot = destinationRoot.path
+            existing.updatedAt = .now
+            ledger = existing
+        } else {
+            ledger = WorkLedger(projectID: projectID, runID: runID, sourceRoot: sourceRoot.path, destinationRoot: destinationRoot.path)
+        }
+    }
+
+    func mergePlan(_ plannedItems: [WorkLedgerItem]) throws {
+        let plannedIDs = Set(plannedItems.map(\.id))
+        for var item in plannedItems {
+            if var existing = ledger.items[item.id] {
+                existing.sourcePath = item.sourcePath
+                existing.destinationPath = item.destinationPath
+                existing.sourceSize = item.sourceSize
+                existing.updatedAt = .now
+                if existing.status != .done && existing.status != .skippedExisting && existing.status != .sourceDeleted {
+                    existing.status = .planned
+                    existing.detail = "Ready to continue"
+                }
+                ledger.items[item.id] = existing
+            } else {
+                item.status = .planned
+                item.detail = "Waiting"
+                item.updatedAt = .now
+                ledger.items[item.id] = item
+            }
+        }
+        ledger.items = ledger.items.filter { _, value in
+            plannedIDs.contains(value.id) || value.status == .sourceDeleted
+        }
+        try save()
+    }
+
+    func mark(
+        item: PlanItem,
+        kind: WorkItemKind,
+        status: WorkItemStatus,
+        destination: URL,
+        sourceSize: Int64? = nil,
+        destinationSize: Int64? = nil,
+        detail: String
+    ) async {
+        var entry = ledger.items["\(kind.rawValue):\(item.relativePath)"] ?? WorkLedgerItem(
+            kind: kind,
+            sourcePath: item.sourcePath,
+            relativePath: item.relativePath,
+            destinationPath: destination.path,
+            sourceSize: sourceSize ?? 0,
+            status: status,
+            detail: detail
+        )
+        entry.sourcePath = item.sourcePath
+        entry.destinationPath = destination.path
+        if let sourceSize {
+            entry.sourceSize = sourceSize
+        }
+        entry.destinationSize = destinationSize
+        entry.status = status
+        entry.detail = detail
+        entry.updatedAt = .now
+        ledger.items[entry.id] = entry
+        try? save()
+    }
+
+    private func save() throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        ledger.updatedAt = .now
+        let data = try JSONCoding.encoder.encode(ledger)
+        try data.write(to: url, options: .atomic)
+    }
+}
