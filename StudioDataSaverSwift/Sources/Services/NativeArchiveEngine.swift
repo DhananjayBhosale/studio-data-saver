@@ -28,14 +28,27 @@ struct NativeArchiveEngine: Sendable {
         let plannedSourceBytes = ledgerItems.reduce(Int64(0)) { $0 + $1.sourceSize }
         let ledger = try WorkLedgerRecorder(url: ledgerURL, projectID: project.id, runID: runID, sourceRoot: sourceRoot, destinationRoot: destinationRoot)
         try await ledger.mergePlan(ledgerItems)
+        let resumePlan = await ledger.resumePlan(directFiles: plan.directFiles, videos: plan.videos)
+        let alreadyDone = resumePlan.directDone + resumePlan.videoDone
         await onEvent(RunEvent(runID: runID, type: "plan_ready", path: destinationRoot.path, detail: "\(countText(plan.directFiles.count, "file")), \(countText(plan.videos.count, "video"))"))
-        await onEvent(RunEvent(runID: runID, type: "resume_ready", path: ledgerURL.path, detail: "Resume ready"))
+        if alreadyDone > 0 {
+            await onEvent(RunEvent(runID: runID, type: "resume_ready", path: ledgerURL.path, detail: "\(countText(alreadyDone, "finished item")) skipped from the work list"))
+        } else {
+            await onEvent(RunEvent(runID: runID, type: "resume_ready", path: ledgerURL.path, detail: "Resume ready"))
+        }
 
-        let progress = EngineProgressReporter(sourceBytesTotal: plannedSourceBytes, onProgress: onProgress)
+        let progress = EngineProgressReporter(
+            sourceBytesTotal: plannedSourceBytes,
+            directDone: resumePlan.directDone,
+            videoDone: resumePlan.videoDone,
+            sourceBytesDone: resumePlan.sourceBytesDone,
+            outputBytesDone: resumePlan.outputBytesDone,
+            onProgress: onProgress
+        )
         await onProgress(await progress.current())
 
         async let directTask: Void = copyDirectFiles(
-            plan.directFiles,
+            resumePlan.directFiles,
             project: project,
             sourceRoot: sourceRoot,
             destinationRoot: destinationRoot,
@@ -48,7 +61,7 @@ struct NativeArchiveEngine: Sendable {
         )
 
         async let videoTask: Void = processVideos(
-            plan.videos,
+            resumePlan.videos,
             project: project,
             sourceRoot: sourceRoot,
             destinationRoot: destinationRoot,

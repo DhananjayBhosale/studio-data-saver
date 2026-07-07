@@ -14,6 +14,7 @@ final class StudioStore {
     var activeProjectID: UUID?
     var isRunning = false
     var lastNotice = ""
+    private var resumableProjectIDs: Set<UUID> = []
 
     private let paths = AppPaths.live
     private let engine = NativeArchiveEngine()
@@ -27,6 +28,7 @@ final class StudioStore {
             selectedProjectID = projects.first?.id
         }
         selectedRunID = runs.first?.id
+        refreshResumeStatus()
         recoverInterruptedWork()
     }
 
@@ -115,11 +117,17 @@ final class StudioStore {
     }
 
     var selectedProjectActionTitle: String {
-        isRunning || !queuedProjectIDs.isEmpty ? "Queue" : "Start"
+        if isRunning || !queuedProjectIDs.isEmpty {
+            return "Queue"
+        }
+        return selectedProjectCanResume ? "Resume" : "Start"
     }
 
     var selectedProjectActionIcon: String {
-        isRunning || !queuedProjectIDs.isEmpty ? "text.badge.plus" : "play.fill"
+        if isRunning || !queuedProjectIDs.isEmpty {
+            return "text.badge.plus"
+        }
+        return selectedProjectCanResume ? "arrow.clockwise" : "play.fill"
     }
 
     var allProjectsActionTitle: String {
@@ -128,6 +136,11 @@ final class StudioStore {
 
     var allProjectsActionIcon: String {
         isRunning || !queuedProjectIDs.isEmpty ? "list.bullet.rectangle" : "play.fill"
+    }
+
+    var selectedProjectCanResume: Bool {
+        guard let selectedProjectID else { return false }
+        return resumableProjectIDs.contains(selectedProjectID)
     }
 
     func addProject() {
@@ -141,6 +154,7 @@ final class StudioStore {
         projects.insert(project, at: 0)
         selectedProjectID = project.id
         save()
+        refreshResumeStatus()
     }
 
     func duplicateSelectedProject() {
@@ -152,6 +166,7 @@ final class StudioStore {
         projects.insert(project, at: 0)
         selectedProjectID = project.id
         save()
+        refreshResumeStatus()
     }
 
     func removeSelectedProject() {
@@ -160,6 +175,7 @@ final class StudioStore {
         queuedProjectIDs.removeAll { $0 == selectedProjectID }
         self.selectedProjectID = projects.first?.id
         save()
+        refreshResumeStatus()
     }
 
     func pickFolder(for field: PathField) {
@@ -279,7 +295,7 @@ final class StudioStore {
         if project.deleteSourceClutterAfterSave {
             let alert = NSAlert()
             alert.messageText = "Delete source cleanup items after saving?"
-            alert.informativeText = "This removes ZIP files, Auto Save folders, and Premiere/After Effects project files outside Project Files folders from the source folder."
+            alert.informativeText = "This removes previews, cache folders, ZIP files, Auto Save folders, and Premiere/After Effects project files outside Project Files folders from the source folder."
             alert.alertStyle = .warning
             alert.addButton(withTitle: "Delete Cleanup Items")
             alert.addButton(withTitle: "Keep Cleanup Items")
@@ -354,6 +370,7 @@ final class StudioStore {
             await record(RunEvent(runID: run.id, type: "error", path: project.sourcePath, detail: error.localizedDescription))
         }
         save()
+        refreshResumeStatus()
     }
 
     private func record(_ event: RunEvent) async {
@@ -403,6 +420,24 @@ final class StudioStore {
             return false
         }
         return true
+    }
+
+    private func refreshResumeStatus() {
+        resumableProjectIDs = Set(projects.compactMap { project in
+            canResume(project: project) ? project.id : nil
+        })
+    }
+
+    private func canResume(project: StudioProject) -> Bool {
+        let ledgerURL = paths.ledgerURL(for: project.id)
+        guard let data = try? Data(contentsOf: ledgerURL),
+              let ledger = try? JSONCoding.decoder.decode(WorkLedger.self, from: data),
+              !ledger.items.isEmpty else {
+            return false
+        }
+        let hasFinishedWork = ledger.items.values.contains { $0.status.isResumeComplete }
+        let hasRemainingWork = ledger.items.values.contains { !$0.status.isResumeComplete }
+        return hasFinishedWork && hasRemainingWork
     }
 
     private func load() {
@@ -476,19 +511,16 @@ final class StudioStore {
         }
 
         if let activeProjectID,
-           !queuedProjectIDs.contains(activeProjectID),
-           let project = projects.first(where: { $0.id == activeProjectID }),
-           validate(project: project) {
-            queuedProjectIDs.insert(activeProjectID, at: 0)
-            lastNotice = "Recovered and queued \(project.name)"
+           let project = projects.first(where: { $0.id == activeProjectID }) {
+            selectedProjectID = activeProjectID
+            lastNotice = "Recovered \(project.name). Press Resume when ready."
+            self.activeProjectID = nil
             changed = true
         }
 
         if changed {
             save()
-        }
-        if !queuedProjectIDs.isEmpty {
-            startQueue()
+            refreshResumeStatus()
         }
     }
 }

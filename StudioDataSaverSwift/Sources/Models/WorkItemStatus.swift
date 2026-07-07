@@ -22,4 +22,13 @@ extension WorkItemStatus {
             true
         }
     }
+
+    var isResumeComplete: Bool {
+        switch self {
+        case .done, .skippedExisting, .sourceDeleted:
+            true
+        case .planned, .copying, .staging, .compressing, .skippedNoSpace, .failed, .sourceDeleteFailed:
+            false
+        }
+    }
 }

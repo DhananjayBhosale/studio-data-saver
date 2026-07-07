@@ -9,8 +9,19 @@ actor EngineProgressReporter {
     private var outputBytesDone: Int64 = 0
     private let onProgress: (EngineProgress) async -> Void
 
-    init(sourceBytesTotal: Int64, onProgress: @escaping (EngineProgress) async -> Void) {
+    init(
+        sourceBytesTotal: Int64,
+        directDone: Int = 0,
+        videoDone: Int = 0,
+        sourceBytesDone: Int64 = 0,
+        outputBytesDone: Int64 = 0,
+        onProgress: @escaping (EngineProgress) async -> Void
+    ) {
         self.sourceBytesTotal = sourceBytesTotal
+        self.directDone = directDone
+        self.videoDone = videoDone
+        self.sourceBytesDone = sourceBytesDone
+        self.outputBytesDone = outputBytesDone
         self.onProgress = onProgress
     }
 

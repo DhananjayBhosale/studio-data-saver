@@ -46,6 +46,29 @@ actor WorkLedgerRecorder {
         try save()
     }
 
+    func resumePlan(directFiles: [PlanItem], videos: [PlanItem]) -> ResumePlan {
+        let directRemaining = remainingItems(directFiles, kind: .direct)
+        let videoRemaining = remainingItems(videos, kind: .video)
+        let directDone = directFiles.count - directRemaining.count
+        let videoDone = videos.count - videoRemaining.count
+        let completedItems = (directFiles.map { ($0, WorkItemKind.direct) } + videos.map { ($0, WorkItemKind.video) })
+            .compactMap { item, kind -> WorkLedgerItem? in
+                let id = "\(kind.rawValue):\(item.relativePath)"
+                guard let ledgerItem = ledger.items[id], ledgerItem.status.isResumeComplete else { return nil }
+                return ledgerItem
+            }
+        let sourceBytesDone = completedItems.reduce(Int64(0)) { $0 + $1.sourceSize }
+        let outputBytesDone = completedItems.reduce(Int64(0)) { $0 + ($1.destinationSize ?? $1.sourceSize) }
+        return ResumePlan(
+            directFiles: directRemaining,
+            videos: videoRemaining,
+            directDone: directDone,
+            videoDone: videoDone,
+            sourceBytesDone: sourceBytesDone,
+            outputBytesDone: outputBytesDone
+        )
+    }
+
     func mark(
         item: PlanItem,
         kind: WorkItemKind,
@@ -94,6 +117,13 @@ actor WorkLedgerRecorder {
         unsavedChanges += 1
         if status.shouldSaveImmediately || unsavedChanges >= 100 || Date.now.timeIntervalSince(lastSave) >= 5 {
             try save()
+        }
+    }
+
+    private func remainingItems(_ items: [PlanItem], kind: WorkItemKind) -> [PlanItem] {
+        items.filter { item in
+            let id = "\(kind.rawValue):\(item.relativePath)"
+            return ledger.items[id]?.status.isResumeComplete != true
         }
     }
 }
