@@ -20,7 +20,6 @@ struct NativeArchiveEngine: Sendable {
 
         try ensureDirectory(destinationRoot)
         try ensureDirectory(workBase)
-        try await recoverPartialFiles(in: destinationRoot, runID: runID, onEvent: onEvent)
         try await recoverStaleWorkFolders(in: workBase, currentRunID: runID, onEvent: onEvent)
 
         await onEvent(RunEvent(runID: runID, type: "plan", path: sourceRoot.path, detail: "Checking files"))
@@ -83,7 +82,7 @@ struct NativeArchiveEngine: Sendable {
 
         for child in children {
             try Task.checkCancellation()
-            let values = try child.resourceValues(forKeys: [.isDirectoryKey])
+            let values = try child.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
             if values.isDirectory == true {
                 let name = child.lastPathComponent
 
@@ -120,7 +119,7 @@ struct NativeArchiveEngine: Sendable {
                 if ext == "zip" {
                     continue
                 }
-                try addFileToPlan(sourceRoot: sourceRoot, file: child, plan: &plan)
+                try addFileToPlan(sourceRoot: sourceRoot, file: child, sourceSize: values.fileSize.map(Int64.init), plan: &plan)
             }
         }
     }
@@ -128,17 +127,17 @@ struct NativeArchiveEngine: Sendable {
     private func addTreeToDirectPlan(sourceRoot: URL, folder: URL, plan: inout Plan) throws {
         let children = try FileManager.default.contentsOfDirectory(
             at: folder,
-            includingPropertiesForKeys: [.isDirectoryKey],
+            includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey],
             options: [.skipsHiddenFiles]
         )
 
         for child in children {
             try Task.checkCancellation()
-            let values = try child.resourceValues(forKeys: [.isDirectoryKey])
+            let values = try child.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
             if values.isDirectory == true {
                 try addTreeToDirectPlan(sourceRoot: sourceRoot, folder: child, plan: &plan)
             } else if child.pathExtension.lowercased() != "zip" {
-                try addDirectFile(sourceRoot: sourceRoot, file: child, plan: &plan)
+                try addDirectFile(sourceRoot: sourceRoot, file: child, sourceSize: values.fileSize.map(Int64.init), plan: &plan)
             }
         }
     }
@@ -148,16 +147,20 @@ struct NativeArchiveEngine: Sendable {
             at: folder,
             includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey],
             options: [.skipsHiddenFiles]
-        ).filter { url in
+        )
+
+        let fileValues = files.compactMap { url -> (url: URL, size: Int64)? in
             (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true
+                ? (url, (try? fileSize(url)) ?? 0)
+                : nil
         }
 
-        let finals = files.filter { ArchiveRule.isFinalFile($0.lastPathComponent) }
-        if let final = finals.sorted(by: newestFirst).first {
-            try addDirectFile(sourceRoot: sourceRoot, file: final, plan: &plan)
+        let finals = fileValues.filter { ArchiveRule.isFinalFile($0.url.lastPathComponent) }
+        if let final = finals.sorted(by: { newestFirst($0.url, $1.url) }).first {
+            try addDirectFile(sourceRoot: sourceRoot, file: final.url, sourceSize: final.size, plan: &plan)
         } else {
-            for file in files where file.pathExtension.lowercased() != "zip" {
-                try addFileToPlan(sourceRoot: sourceRoot, file: file, plan: &plan)
+            for fileValue in fileValues where fileValue.url.pathExtension.lowercased() != "zip" {
+                try addFileToPlan(sourceRoot: sourceRoot, file: fileValue.url, sourceSize: fileValue.size, plan: &plan)
             }
         }
     }
@@ -186,13 +189,13 @@ struct NativeArchiveEngine: Sendable {
         try collectProjectFiles(folder: folder, prprojFiles: &prprojFiles, aepFiles: &aepFiles, otherFiles: &otherFiles, videoFiles: &videoFiles)
 
         for file in prprojFiles + aepFiles {
-            try addDirectFile(sourceRoot: sourceRoot, file: file, plan: &plan)
+            try addDirectFile(sourceRoot: sourceRoot, file: file, sourceSize: nil, plan: &plan)
         }
         for file in otherFiles where file.pathExtension.lowercased() != "zip" {
-            try addDirectFile(sourceRoot: sourceRoot, file: file, plan: &plan)
+            try addDirectFile(sourceRoot: sourceRoot, file: file, sourceSize: nil, plan: &plan)
         }
         for file in videoFiles {
-            try addVideoFile(sourceRoot: sourceRoot, file: file, plan: &plan)
+            try addVideoFile(sourceRoot: sourceRoot, file: file, sourceSize: nil, plan: &plan)
         }
     }
 
@@ -211,7 +214,7 @@ struct NativeArchiveEngine: Sendable {
 
         for child in children {
             try Task.checkCancellation()
-            let values = try child.resourceValues(forKeys: [.isDirectoryKey])
+            let values = try child.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
             if values.isDirectory == true {
                 let name = child.lastPathComponent
                 if ArchiveRule.isProxiesFolder(name) || ArchiveRule.isAdobeCacheFolder(name) {
@@ -253,20 +256,20 @@ struct NativeArchiveEngine: Sendable {
         }
     }
 
-    private func addFileToPlan(sourceRoot: URL, file: URL, plan: inout Plan) throws {
+    private func addFileToPlan(sourceRoot: URL, file: URL, sourceSize: Int64?, plan: inout Plan) throws {
         if ArchiveRule.isVideoFile(file) {
-            try addVideoFile(sourceRoot: sourceRoot, file: file, plan: &plan)
+            try addVideoFile(sourceRoot: sourceRoot, file: file, sourceSize: sourceSize, plan: &plan)
         } else {
-            try addDirectFile(sourceRoot: sourceRoot, file: file, plan: &plan)
+            try addDirectFile(sourceRoot: sourceRoot, file: file, sourceSize: sourceSize, plan: &plan)
         }
     }
 
-    private func addDirectFile(sourceRoot: URL, file: URL, plan: inout Plan) throws {
-        plan.directFiles.append(PlanItem(sourcePath: file.path, relativePath: relativePath(from: sourceRoot, to: file)))
+    private func addDirectFile(sourceRoot: URL, file: URL, sourceSize: Int64?, plan: inout Plan) throws {
+        plan.directFiles.append(PlanItem(sourcePath: file.path, relativePath: relativePath(from: sourceRoot, to: file), sourceSize: sourceSize ?? (try? fileSize(file))))
     }
 
-    private func addVideoFile(sourceRoot: URL, file: URL, plan: inout Plan) throws {
-        plan.videos.append(PlanItem(sourcePath: file.path, relativePath: relativePath(from: sourceRoot, to: file)))
+    private func addVideoFile(sourceRoot: URL, file: URL, sourceSize: Int64?, plan: inout Plan) throws {
+        plan.videos.append(PlanItem(sourcePath: file.path, relativePath: relativePath(from: sourceRoot, to: file), sourceSize: sourceSize ?? (try? fileSize(file))))
     }
 
     private func copyDirectFiles(
@@ -286,7 +289,7 @@ struct NativeArchiveEngine: Sendable {
             try Task.checkCancellation()
             let destination = destinationRoot.appendingPathComponent(item.relativePath, isDirectory: false)
             do {
-                let size = try fileSize(item.sourceURL)
+                let size = try sourceSize(for: item)
                 if alreadyCopied(source: item.sourceURL, destination: destination, size: size) {
                     await ledger.mark(item: item, kind: .direct, status: .skippedExisting, destination: destination, sourceSize: size, destinationSize: size, detail: "Already saved")
                     await deleteOriginalIfNeeded(item: item, kind: .direct, project: project, destination: destination, ledger: ledger, runID: runID, onEvent: onEvent)
@@ -407,7 +410,7 @@ struct NativeArchiveEngine: Sendable {
 
         do {
             try ensureDirectory(destination.deletingLastPathComponent())
-            let size = try fileSize(item.sourceURL)
+            let size = try sourceSize(for: item)
 
             if destinationExistsAndLooksUsable(source: item.sourceURL, destination: destination, ffprobe: ffprobe) {
                 let destinationSize = (try? fileSize(destination)) ?? 0
@@ -705,7 +708,7 @@ struct NativeArchiveEngine: Sendable {
                 sourcePath: item.sourcePath,
                 relativePath: item.relativePath,
                 destinationPath: destinationRoot.appendingPathComponent(item.relativePath).path,
-                sourceSize: (try? fileSize(item.sourceURL)) ?? 0,
+                sourceSize: item.sourceSize ?? 0,
                 status: .planned,
                 detail: "Waiting"
             )
@@ -716,7 +719,7 @@ struct NativeArchiveEngine: Sendable {
                 sourcePath: item.sourcePath,
                 relativePath: item.relativePath,
                 destinationPath: finalVideoURL(for: item, destinationRoot: destinationRoot).path,
-                sourceSize: (try? fileSize(item.sourceURL)) ?? 0,
+                sourceSize: item.sourceSize ?? 0,
                 status: .planned,
                 detail: "Waiting"
             )
@@ -757,7 +760,7 @@ struct NativeArchiveEngine: Sendable {
         guard fileExists(destination), ((try? fileSize(destination)) ?? 0) > 0 else {
             return false
         }
-        return durationLooksValid(source: source, destination: destination, ffprobe: ffprobe)
+        return true
     }
 
     private func durationLooksValid(source: URL, destination: URL, ffprobe: String?) -> Bool {
@@ -824,32 +827,6 @@ struct NativeArchiveEngine: Sendable {
         }
         return destinationSize == size
             && source.lastPathComponent == destination.lastPathComponent
-            && filesMatch(source: source, destination: destination, expectedSize: size)
-    }
-
-    private func filesMatch(source: URL, destination: URL, expectedSize: Int64) -> Bool {
-        guard let sourceHandle = try? FileHandle(forReadingFrom: source),
-              let destinationHandle = try? FileHandle(forReadingFrom: destination) else {
-            return false
-        }
-        defer {
-            try? sourceHandle.close()
-            try? destinationHandle.close()
-        }
-
-        let chunkSize = 8 * 1024 * 1024
-        var remaining = expectedSize
-        while remaining > 0 {
-            let readSize = min(chunkSize, Int(remaining))
-            let sourceChunk = sourceHandle.readData(ofLength: readSize)
-            let destinationChunk = destinationHandle.readData(ofLength: readSize)
-            if sourceChunk.count != readSize || sourceChunk != destinationChunk {
-                return false
-            }
-            remaining -= Int64(readSize)
-        }
-
-        return true
     }
 
     private func copyFileAtomically(from source: URL, to destination: URL) throws {
@@ -915,6 +892,13 @@ struct NativeArchiveEngine: Sendable {
     private func fileSize(_ url: URL) throws -> Int64 {
         let values = try url.resourceValues(forKeys: [.fileSizeKey])
         return Int64(values.fileSize ?? 0)
+    }
+
+    private func sourceSize(for item: PlanItem) throws -> Int64 {
+        if let sourceSize = item.sourceSize {
+            return sourceSize
+        }
+        return try fileSize(item.sourceURL)
     }
 
     private func countText(_ count: Int, _ word: String) -> String {
