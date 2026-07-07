@@ -5,6 +5,6 @@ struct PlanItem: Codable, Sendable {
     var relativePath: String
 
     var sourceURL: URL {
-        URL(fileURLWithPath: sourcePath)
+        URL(filePath: sourcePath, directoryHint: .notDirectory)
     }
 }
