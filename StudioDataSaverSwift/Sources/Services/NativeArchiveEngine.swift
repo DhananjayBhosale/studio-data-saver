@@ -91,10 +91,14 @@ struct NativeArchiveEngine: Sendable {
                     continue
                 }
 
-                if ArchiveRule.isAutoSaveFolder(name) || ArchiveRule.isAdobeCacheFolder(name) || ArchiveRule.isProxiesFolder(name) {
+                if ArchiveRule.isAutoSaveFolder(name) {
                     if inProjectFiles {
                         try addTreeToDirectPlan(sourceRoot: sourceRoot, folder: child, plan: &plan)
                     }
+                    continue
+                }
+
+                if ArchiveRule.isAdobeCacheFolder(name) || ArchiveRule.isProxiesFolder(name) {
                     continue
                 }
 
@@ -213,7 +217,7 @@ struct NativeArchiveEngine: Sendable {
                 if ArchiveRule.isProxiesFolder(name) || ArchiveRule.isAdobeCacheFolder(name) {
                     continue
                 }
-                if ArchiveRule.isAutoSaveFolder(name) {
+                if ArchiveRule.isAutoSaveFolder(name) || ArchiveRule.isAdobeCacheFolder(name) || ArchiveRule.isProxiesFolder(name) {
                     try addAutoSaveTree(folder: child, otherFiles: &otherFiles)
                     continue
                 }
