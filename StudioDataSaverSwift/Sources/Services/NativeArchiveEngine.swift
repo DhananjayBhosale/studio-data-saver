@@ -455,7 +455,33 @@ struct NativeArchiveEngine: Sendable {
             ]
             arguments.append(contentsOf: resolutionArguments(for: project.exportResolution, source: handbrakeSource, ffprobe: ffprobe))
             arguments.append(contentsOf: project.exportFrameRate.handBrakeArguments)
-            let status = runner.run(handBrake, arguments: arguments)
+            let status = await runner.run(
+                handBrake,
+                arguments: arguments,
+                watchdog: ProcessWatchdog(
+                    monitoredFile: tempDestination,
+                    warningAfterSeconds: 10 * 60,
+                    stopAfterSeconds: 30 * 60
+                ),
+                onWatchdogEvent: { event in
+                    switch event {
+                    case .warning(let inactiveSeconds, let cpuPercent):
+                        await onEvent(RunEvent(
+                            runID: runID,
+                            type: "handbrake_stall",
+                            path: item.relativePath,
+                            detail: "HandBrake looks stuck: low CPU\(cpuText(cpuPercent)) and no output change for \(minutesText(inactiveSeconds))"
+                        ))
+                    case .stopped(let inactiveSeconds, let cpuPercent):
+                        await onEvent(RunEvent(
+                            runID: runID,
+                            type: "handbrake_stopped",
+                            path: item.relativePath,
+                            detail: "Stopped frozen HandBrake job after \(minutesText(inactiveSeconds)) with low CPU\(cpuText(cpuPercent))"
+                        ))
+                    }
+                }
+            )
 
             if project.sourceLocation == .network && project.deleteWorkCopiesAfterSave {
                 try? FileManager.default.removeItem(at: handbrakeSource)
@@ -764,6 +790,16 @@ struct NativeArchiveEngine: Sendable {
 
     private func countText(_ count: Int, _ word: String) -> String {
         "\(count) \(word)\(count == 1 ? "" : "s")"
+    }
+
+    private func minutesText(_ seconds: TimeInterval) -> String {
+        let minutes = max(1, Int(seconds / 60))
+        return "\(minutes) minute\(minutes == 1 ? "" : "s")"
+    }
+
+    private func cpuText(_ cpuPercent: Double?) -> String {
+        guard let cpuPercent else { return "" }
+        return " (\(cpuPercent.formatted(.number.precision(.fractionLength(1))))%)"
     }
 
     private func relativePath(from root: URL, to file: URL) -> String {
