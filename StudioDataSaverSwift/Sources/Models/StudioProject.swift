@@ -12,6 +12,7 @@ struct StudioProject: Codable, Identifiable, Equatable, Sendable {
     var exportResolution = ExportResolution.matchOriginal
     var exportFrameRate = ExportFrameRate.matchOriginal
     var sourceCleanupAction = SourceCleanupAction.keepOriginals
+    var deleteSourceClutterAfterSave = false
     var deleteWorkCopiesAfterSave = true
     var replaceProblemDestinationFiles = true
     var createdAt = Date.now
@@ -29,6 +30,7 @@ struct StudioProject: Codable, Identifiable, Equatable, Sendable {
         exportResolution: ExportResolution = .matchOriginal,
         exportFrameRate: ExportFrameRate = .matchOriginal,
         sourceCleanupAction: SourceCleanupAction = .keepOriginals,
+        deleteSourceClutterAfterSave: Bool = false,
         deleteWorkCopiesAfterSave: Bool = true,
         replaceProblemDestinationFiles: Bool = true,
         createdAt: Date = .now,
@@ -45,6 +47,7 @@ struct StudioProject: Codable, Identifiable, Equatable, Sendable {
         self.exportResolution = exportResolution
         self.exportFrameRate = exportFrameRate
         self.sourceCleanupAction = sourceCleanupAction
+        self.deleteSourceClutterAfterSave = deleteSourceClutterAfterSave
         self.deleteWorkCopiesAfterSave = deleteWorkCopiesAfterSave
         self.replaceProblemDestinationFiles = replaceProblemDestinationFiles
         self.createdAt = createdAt
@@ -64,6 +67,7 @@ struct StudioProject: Codable, Identifiable, Equatable, Sendable {
         exportResolution = try container.decodeIfPresent(ExportResolution.self, forKey: .exportResolution) ?? .matchOriginal
         exportFrameRate = try container.decodeIfPresent(ExportFrameRate.self, forKey: .exportFrameRate) ?? .matchOriginal
         sourceCleanupAction = try container.decodeIfPresent(SourceCleanupAction.self, forKey: .sourceCleanupAction) ?? .keepOriginals
+        deleteSourceClutterAfterSave = try container.decodeIfPresent(Bool.self, forKey: .deleteSourceClutterAfterSave) ?? false
         deleteWorkCopiesAfterSave = try container.decodeIfPresent(Bool.self, forKey: .deleteWorkCopiesAfterSave) ?? true
         replaceProblemDestinationFiles = try container.decodeIfPresent(Bool.self, forKey: .replaceProblemDestinationFiles) ?? true
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now

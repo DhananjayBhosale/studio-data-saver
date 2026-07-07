@@ -80,6 +80,11 @@ final class StudioStore {
         set { updateSelectedProject { $0.sourceCleanupAction = newValue } }
     }
 
+    var selectedDeleteSourceClutterAfterSave: Bool {
+        get { selectedProject?.deleteSourceClutterAfterSave ?? false }
+        set { updateSelectedProject { $0.deleteSourceClutterAfterSave = newValue } }
+    }
+
     var selectedDeleteWorkCopiesAfterSave: Bool {
         get { selectedProject?.deleteWorkCopiesAfterSave ?? true }
         set { updateSelectedProject { $0.deleteWorkCopiesAfterSave = newValue } }
@@ -239,7 +244,7 @@ final class StudioStore {
             guard validate(project: project) else {
                 continue
             }
-            guard let runProject = deletionApprovedProject(project) else {
+            guard let runProject = destructiveCleanupApprovedProject(project) else {
                 continue
             }
             activeProjectID = project.id
@@ -248,30 +253,50 @@ final class StudioStore {
         }
     }
 
-    private func deletionApprovedProject(_ project: StudioProject) -> StudioProject? {
-        guard project.sourceCleanupAction == .deleteAfterSaved else {
-            return project
+    private func destructiveCleanupApprovedProject(_ project: StudioProject) -> StudioProject? {
+        var runProject = project
+
+        if project.sourceCleanupAction == .deleteAfterSaved {
+            let alert = NSAlert()
+            alert.messageText = "Delete originals after saving?"
+            alert.informativeText = "Files are deleted from the source folder only after they are safely saved to the destination."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Delete Originals")
+            alert.addButton(withTitle: "Keep Originals")
+            alert.addButton(withTitle: "Skip Project")
+
+            switch alert.runModal() {
+            case .alertFirstButtonReturn:
+                break
+            case .alertSecondButtonReturn:
+                runProject.sourceCleanupAction = .keepOriginals
+            default:
+                lastNotice = "Skipped \(project.name)"
+                return nil
+            }
         }
 
-        let alert = NSAlert()
-        alert.messageText = "Delete originals after saving?"
-        alert.informativeText = "Files are deleted from the source folder only after they are safely saved to the destination."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Delete Originals")
-        alert.addButton(withTitle: "Keep Originals")
-        alert.addButton(withTitle: "Skip Project")
+        if project.deleteSourceClutterAfterSave {
+            let alert = NSAlert()
+            alert.messageText = "Delete source cleanup items after saving?"
+            alert.informativeText = "This removes ZIP files, Auto Save folders, and Premiere/After Effects project files outside Project Files folders from the source folder."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Delete Cleanup Items")
+            alert.addButton(withTitle: "Keep Cleanup Items")
+            alert.addButton(withTitle: "Skip Project")
 
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:
-            return project
-        case .alertSecondButtonReturn:
-            var safeProject = project
-            safeProject.sourceCleanupAction = .keepOriginals
-            return safeProject
-        default:
-            lastNotice = "Skipped \(project.name)"
-            return nil
+            switch alert.runModal() {
+            case .alertFirstButtonReturn:
+                break
+            case .alertSecondButtonReturn:
+                runProject.deleteSourceClutterAfterSave = false
+            default:
+                lastNotice = "Skipped \(project.name)"
+                return nil
+            }
         }
+
+        return runProject
     }
 
     private func run(project: StudioProject) async {

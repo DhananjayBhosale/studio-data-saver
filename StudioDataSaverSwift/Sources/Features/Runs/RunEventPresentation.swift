@@ -3,7 +3,7 @@ import SwiftUI
 extension RunEvent {
     var typeLabel: String {
         switch type {
-        case "error", "copy_fail", "video_fail", "source_delete_fail":
+        case "error", "copy_fail", "video_fail", "source_delete_fail", "source_clutter_delete_fail":
             "ERROR"
         case "copy", "stage":
             "COPIED"
@@ -17,7 +17,7 @@ extension RunEvent {
             "SPACE"
         case "complete":
             "DONE"
-        case "source_delete":
+        case "source_delete", "source_clutter_delete":
             "DELETED"
         default:
             "INFO"
@@ -68,6 +68,12 @@ extension RunEvent {
             "Deleted original \(fileName)"
         case "source_delete_fail":
             "Could not delete original \(fileName): \(detail)"
+        case "source_clutter_delete":
+            detail
+        case "source_clutter_delete_fail":
+            "Could not delete cleanup item \(fileName): \(detail)"
+        case "source_clutter_none":
+            detail
         case "complete":
             "Project complete"
         case "stopped":

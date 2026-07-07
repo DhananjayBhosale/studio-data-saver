@@ -31,6 +31,10 @@ struct ProjectCleanupControls: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Delete previews, ZIPs, autosaves, old project files", isOn: $store.selectedDeleteSourceClutterAfterSave)
+                        .toggleStyle(.checkbox)
+                        .help("After saving, delete preview/cache folders, ZIP files, Auto Save folders, and .prproj/.aep files outside Project Files folders.")
+
                     Toggle("Delete iMac temp copies", isOn: $store.selectedDeleteWorkCopiesAfterSave)
                         .toggleStyle(.checkbox)
                         .help("Delete temporary files from the work folder after processing.")
@@ -41,7 +45,7 @@ struct ProjectCleanupControls: View {
                 }
             }
 
-            Text("Destination files stay. Deleting originals always asks first.")
+            Text("Destination files stay. Deleting originals or cleanup items always asks first.")
                 .font(StudioTypography.monoCaption)
                 .foregroundStyle(StudioPalette.secondaryText(colorScheme))
                 .lineLimit(2)

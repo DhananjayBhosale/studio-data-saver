@@ -63,6 +63,7 @@ struct NativeArchiveEngine: Sendable {
         )
 
         _ = try await (directTask, videoTask)
+        try await deleteSourceClutterIfNeeded(sourceRoot: sourceRoot, destinationRoot: destinationRoot, project: project, runID: runID, onEvent: onEvent)
         await onProgress(await progress.current())
         await onEvent(RunEvent(runID: runID, type: "complete", path: destinationRoot.path, detail: "Project complete"))
     }
@@ -90,7 +91,7 @@ struct NativeArchiveEngine: Sendable {
                     continue
                 }
 
-                if ArchiveRule.isAutoSaveFolder(name) {
+                if ArchiveRule.isAutoSaveFolder(name) || ArchiveRule.isAdobeCacheFolder(name) || ArchiveRule.isProxiesFolder(name) {
                     if inProjectFiles {
                         try addTreeToDirectPlan(sourceRoot: sourceRoot, folder: child, plan: &plan)
                     }
@@ -582,6 +583,115 @@ struct NativeArchiveEngine: Sendable {
             )
             await onEvent(RunEvent(runID: runID, type: "source_delete_fail", path: item.relativePath, detail: error.localizedDescription))
         }
+    }
+
+    private func deleteSourceClutterIfNeeded(
+        sourceRoot: URL,
+        destinationRoot: URL,
+        project: StudioProject,
+        runID: UUID,
+        onEvent: @escaping (RunEvent) async -> Void
+    ) async throws {
+        guard project.deleteSourceClutterAfterSave else { return }
+
+        let result = try await deleteSourceClutter(
+            sourceRoot: sourceRoot,
+            destinationRoot: destinationRoot,
+            folder: sourceRoot,
+            inProjectFiles: false,
+            runID: runID,
+            onEvent: onEvent
+        )
+        let deletedCount = result.files + result.folders
+        let summary = "\(countText(result.files, "file")), \(countText(result.folders, "folder"))"
+        await onEvent(RunEvent(runID: runID, type: "source_clutter_delete", path: sourceRoot.path, detail: "Deleted \(summary)"))
+        if result.failures > 0 {
+            await onEvent(RunEvent(runID: runID, type: "source_clutter_delete_fail", path: sourceRoot.path, detail: "\(countText(result.failures, "cleanup item")) could not be deleted"))
+        } else if deletedCount == 0 {
+            await onEvent(RunEvent(runID: runID, type: "source_clutter_none", path: sourceRoot.path, detail: "No cleanup items found"))
+        }
+    }
+
+    private func deleteSourceClutter(
+        sourceRoot: URL,
+        destinationRoot: URL,
+        folder: URL,
+        inProjectFiles: Bool,
+        runID: UUID,
+        onEvent: @escaping (RunEvent) async -> Void
+    ) async throws -> (files: Int, folders: Int, failures: Int) {
+        let children = try FileManager.default.contentsOfDirectory(
+            at: folder,
+            includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey],
+            options: [.skipsHiddenFiles]
+        ).sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+
+        var files = 0
+        var folders = 0
+        var failures = 0
+
+        for child in children {
+            try Task.checkCancellation()
+            let values = try child.resourceValues(forKeys: [.isDirectoryKey])
+            if values.isDirectory == true {
+                let name = child.lastPathComponent
+                if ArchiveRule.isAutoSaveFolder(name) {
+                    do {
+                        try FileManager.default.removeItem(at: child)
+                        folders += 1
+                    } catch {
+                        failures += 1
+                        await onEvent(RunEvent(runID: runID, type: "source_clutter_delete_fail", path: child.path, detail: error.localizedDescription))
+                    }
+                    continue
+                }
+
+                let childInProjectFiles = inProjectFiles || ArchiveRule.isProjectFilesFolder(name)
+                let result = try await deleteSourceClutter(
+                    sourceRoot: sourceRoot,
+                    destinationRoot: destinationRoot,
+                    folder: child,
+                    inProjectFiles: childInProjectFiles,
+                    runID: runID,
+                    onEvent: onEvent
+                )
+                files += result.files
+                folders += result.folders
+                failures += result.failures
+            } else if shouldDeleteSourceClutterFile(child, sourceRoot: sourceRoot, destinationRoot: destinationRoot, inProjectFiles: inProjectFiles) {
+                do {
+                    try FileManager.default.removeItem(at: child)
+                    files += 1
+                } catch {
+                    failures += 1
+                    await onEvent(RunEvent(runID: runID, type: "source_clutter_delete_fail", path: child.path, detail: error.localizedDescription))
+                }
+            }
+        }
+
+        return (files, folders, failures)
+    }
+
+    private func shouldDeleteSourceClutterFile(
+        _ file: URL,
+        sourceRoot: URL,
+        destinationRoot: URL,
+        inProjectFiles: Bool
+    ) -> Bool {
+        let fileExtension = file.pathExtension.lowercased()
+        if fileExtension == "zip" {
+            return true
+        }
+        guard !inProjectFiles, fileExtension == "prproj" || fileExtension == "aep" else {
+            return false
+        }
+
+        let relativePath = relativePath(from: sourceRoot, to: file)
+        let destination = destinationRoot.appendingPathComponent(relativePath, isDirectory: false)
+        guard let size = try? fileSize(file) else {
+            return false
+        }
+        return alreadyCopied(source: file, destination: destination, size: size)
     }
 
     private func makeLedgerItems(plan: Plan, destinationRoot: URL) -> [WorkLedgerItem] {
