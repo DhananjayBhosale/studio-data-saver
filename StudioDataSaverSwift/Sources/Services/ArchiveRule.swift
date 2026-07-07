@@ -27,6 +27,10 @@ enum ArchiveRule {
         matches(name, pattern: "video previews|audio previews|motion graphics template")
     }
 
+    static func isSourceClutterFolder(_ name: String) -> Bool {
+        isAutoSaveFolder(name) || isAdobeCacheFolder(name) || isProxiesFolder(name)
+    }
+
     static func isVideoFile(_ url: URL) -> Bool {
         videoExtensions.contains(url.pathExtension.lowercased())
             && !url.lastPathComponent.hasSuffix("_PREVIEW_COMPRESSED.mp4")

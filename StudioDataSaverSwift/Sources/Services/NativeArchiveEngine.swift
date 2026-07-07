@@ -91,7 +91,7 @@ struct NativeArchiveEngine: Sendable {
                     continue
                 }
 
-                if ArchiveRule.isAutoSaveFolder(name) {
+                if ArchiveRule.isSourceClutterFolder(name) {
                     if inProjectFiles {
                         try addTreeToDirectPlan(sourceRoot: sourceRoot, folder: child, plan: &plan)
                     }
@@ -639,7 +639,7 @@ struct NativeArchiveEngine: Sendable {
             let values = try child.resourceValues(forKeys: [.isDirectoryKey])
             if values.isDirectory == true {
                 let name = child.lastPathComponent
-                if ArchiveRule.isAutoSaveFolder(name) {
+                if ArchiveRule.isSourceClutterFolder(name) {
                     do {
                         try FileManager.default.removeItem(at: child)
                         folders += 1
