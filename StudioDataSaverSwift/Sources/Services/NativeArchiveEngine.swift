@@ -284,6 +284,9 @@ struct NativeArchiveEngine: Sendable {
     ) async throws {
         var done = 0
         var failed = 0
+        var skippedExisting = 0
+        var pendingSkippedSourceBytes: Int64 = 0
+        var pendingSkippedOutputBytes: Int64 = 0
 
         for item in items {
             try Task.checkCancellation()
@@ -294,9 +297,23 @@ struct NativeArchiveEngine: Sendable {
                     await ledger.mark(item: item, kind: .direct, status: .skippedExisting, destination: destination, sourceSize: size, destinationSize: size, detail: "Already saved")
                     await deleteOriginalIfNeeded(item: item, kind: .direct, project: project, destination: destination, ledger: ledger, runID: runID, onEvent: onEvent)
                     done += 1
-                    await onEvent(RunEvent(runID: runID, type: "copy_skip", path: item.relativePath, detail: "Already saved"))
-                    await onProgress(WorkProgressUpdate(done: done, failedIncrement: 0, sourceBytesIncrement: size, outputBytesIncrement: size))
+                    skippedExisting += 1
+                    pendingSkippedSourceBytes += size
+                    pendingSkippedOutputBytes += size
+                    if skippedExisting == 1 || skippedExisting % 100 == 0 || done == items.count {
+                        await onEvent(RunEvent(runID: runID, type: "copy_skip", path: item.relativePath, detail: "\(skippedExisting) already saved files skipped"))
+                    }
+                    if skippedExisting % 100 == 0 || done == items.count {
+                        await onProgress(WorkProgressUpdate(done: done, failedIncrement: 0, sourceBytesIncrement: pendingSkippedSourceBytes, outputBytesIncrement: pendingSkippedOutputBytes))
+                        pendingSkippedSourceBytes = 0
+                        pendingSkippedOutputBytes = 0
+                    }
                     continue
+                }
+                if pendingSkippedSourceBytes > 0 || pendingSkippedOutputBytes > 0 {
+                    await onProgress(WorkProgressUpdate(done: done, failedIncrement: 0, sourceBytesIncrement: pendingSkippedSourceBytes, outputBytesIncrement: pendingSkippedOutputBytes))
+                    pendingSkippedSourceBytes = 0
+                    pendingSkippedOutputBytes = 0
                 }
                 if fileExists(destination) && !project.replaceProblemDestinationFiles {
                     await ledger.mark(item: item, kind: .direct, status: .failed, destination: destination, sourceSize: size, detail: "Destination already has a file")
@@ -330,6 +347,10 @@ struct NativeArchiveEngine: Sendable {
                 await onProgress(WorkProgressUpdate(done: done, failedIncrement: 1, sourceBytesIncrement: 0, outputBytesIncrement: 0))
             }
         }
+        if pendingSkippedSourceBytes > 0 || pendingSkippedOutputBytes > 0 {
+            await onProgress(WorkProgressUpdate(done: done, failedIncrement: 0, sourceBytesIncrement: pendingSkippedSourceBytes, outputBytesIncrement: pendingSkippedOutputBytes))
+        }
+        try await ledger.flush()
     }
 
     private func processVideos(
@@ -382,6 +403,7 @@ struct NativeArchiveEngine: Sendable {
             for try await _ in group {
             }
         }
+        try await ledger.flush()
 
         if project.deleteWorkCopiesAfterSave {
             try? FileManager.default.removeItem(at: runWorkRoot)

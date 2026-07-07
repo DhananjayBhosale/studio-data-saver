@@ -3,6 +3,8 @@ import Foundation
 actor WorkLedgerRecorder {
     private let url: URL
     private var ledger: WorkLedger
+    private var unsavedChanges = 0
+    private var lastSave = Date.distantPast
 
     init(url: URL, projectID: UUID, runID: UUID, sourceRoot: URL, destinationRoot: URL) throws {
         self.url = url
@@ -72,7 +74,11 @@ actor WorkLedgerRecorder {
         entry.detail = detail
         entry.updatedAt = .now
         ledger.items[entry.id] = entry
-        try? save()
+        try? saveIfNeeded(for: status)
+    }
+
+    func flush() throws {
+        try save()
     }
 
     private func save() throws {
@@ -80,5 +86,14 @@ actor WorkLedgerRecorder {
         ledger.updatedAt = .now
         let data = try JSONCoding.encoder.encode(ledger)
         try data.write(to: url, options: .atomic)
+        unsavedChanges = 0
+        lastSave = .now
+    }
+
+    private func saveIfNeeded(for status: WorkItemStatus) throws {
+        unsavedChanges += 1
+        if status.shouldSaveImmediately || unsavedChanges >= 100 || Date.now.timeIntervalSince(lastSave) >= 5 {
+            try save()
+        }
     }
 }

@@ -12,3 +12,14 @@ enum WorkItemStatus: String, Codable, Sendable {
     case sourceDeleted
     case sourceDeleteFailed
 }
+
+extension WorkItemStatus {
+    var shouldSaveImmediately: Bool {
+        switch self {
+        case .skippedExisting:
+            false
+        case .planned, .copying, .staging, .compressing, .done, .skippedNoSpace, .failed, .sourceDeleted, .sourceDeleteFailed:
+            true
+        }
+    }
+}
