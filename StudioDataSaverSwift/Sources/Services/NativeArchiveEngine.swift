@@ -505,6 +505,7 @@ struct NativeArchiveEngine: Sendable {
                 try FileManager.default.removeItem(at: destination)
             }
             try FileManager.default.moveItem(at: tempDestination, to: destination)
+            try? copyFileDates(from: item.sourceURL, to: destination)
             let destinationSize = try fileSize(destination)
             await ledger.mark(item: item, kind: .video, status: .done, destination: destination, sourceSize: size, destinationSize: destinationSize, detail: "Saved")
             await deleteOriginalIfNeeded(item: item, kind: .video, project: project, destination: destination, ledger: ledger, runID: runID, onEvent: onEvent)
@@ -747,6 +748,20 @@ struct NativeArchiveEngine: Sendable {
             try FileManager.default.removeItem(at: destination)
         }
         try FileManager.default.moveItem(at: temp, to: destination)
+    }
+
+    private func copyFileDates(from source: URL, to destination: URL) throws {
+        let values = try source.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+        var attributes: [FileAttributeKey: Any] = [:]
+        if let creationDate = values.creationDate {
+            attributes[.creationDate] = creationDate
+        }
+        if let modificationDate = values.contentModificationDate {
+            attributes[.modificationDate] = modificationDate
+        }
+        if !attributes.isEmpty {
+            try FileManager.default.setAttributes(attributes, ofItemAtPath: destination.path)
+        }
     }
 
     private func hasAvailableSpace(near url: URL, requiredBytes: Int64) -> Bool {
